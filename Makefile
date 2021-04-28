@@ -31,6 +31,9 @@ $(BIN):
 $(BIN)/raser: $(SRC)/raser.cc
 	$(CC) $< $(FLAGS) -o $@
 
+merge: 
+	git remote update && git merge dt-np/main 
+
 clean:
 	rm -f $(BIN)/raser 
 	

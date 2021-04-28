@@ -2,7 +2,7 @@
 
 # Main driver to run RASER    
 # Author SHI Xin <shixin@ihep.ac.cn>  
-# Created [2021-03-31 Sun 10:04] 
+# Created [2021-03-21 Sun 10:04] 
 
 
 usage() { 
@@ -10,12 +10,13 @@ usage() {
     printf "\nSYNOPSIS\n"
     printf "\n\t%-5s\n" "./run [OPTION]" 
     printf "\nOPTIONS\n"    
-    printf "\n\t%-9s  %-40s"  "0.1"      "[KDetSim]" 
+    printf "\n\t%-9s  %-40s"  "0.1"       "KDetSim" 
     printf "\n\n" 
 }
 
 usage_0_1() { 
     printf "\n\t%-5s  %-40s\n"  "0.1.1"    "Run 3D exmaple KDetSim" 
+    printf "\n\t%-5s  %-40s\n"  "0.1.2"    "Run 2D exmaple KDetSim" 
 }
 
 if [[ $# -eq 0 ]]; then
@@ -26,12 +27,15 @@ else
     option=$1    
 fi
 
-ip=$(ifconfig en0 | grep inet | awk '$1=="inet" {print $2}')
+
 
 sub_0_1(){
 case $option in 
     0.1.1) echo "Running on 3D example on KDetSim..."
-    docker run --rm -it -h raser  -v /tmp/.X11-unix:/tmp/.X11-unix -e DISPLAY=$ip:0 --mount type=bind,source=$HOME/raser,target=/home/physicist  raser ./bin/raser test.txt  
+    ./bin/raser 3D 
+    ;;
+    0.1.2) echo "Running on 2D example on KDetSim..."
+    ./bin/raser 2D 
     ;;
 esac
 }
@@ -40,13 +44,13 @@ esac
 
 
 case $option in 
-    0.1) echo "3D in KDetSim"
+   0.1) echo "KDetSim"
         usage_0_1
         echo "Please enter your option: " 
         read option 
         sub_0_1 option 
         ;;
-    0.1.*) echo "3D in KDetSim"
+    0.1.*) echo "KDetSim"
         sub_0_1 option
         ;;
         
