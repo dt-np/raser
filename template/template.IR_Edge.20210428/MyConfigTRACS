@@ -1,0 +1,437 @@
+###########################################################################
+###########################################################################
+##                                                                       ##
+##                                                                       ##
+##         888888888888888888b.        d8888 .d8888b.  .d8888b.          ##
+##             888    888   Y88b      d88888d88P  Y88bd88P               ##
+##             888    888    888     d88P888888    888Y88b.              ##
+##             888    888   d88P    d88P 888888        "Y888b.           ##
+##             888    8888888P"    d88P  888888           "Y88b.         ##
+##             888    888 T88b    d88P   888888    888      "888         ##
+##             888    888  T88b  d8888888888Y88b  d88PY88b  d88P         ##
+##             888    888   T88bd88P     888 "Y8888P"  "Y8888P"          ##
+##                                                                       ##
+##                                                                       ##
+###########################################################################
+###########################################################################
+##                                                                       ##
+##            CONFIGURATION FILE FOR TRACS CLI-Execution                 ##
+##                                                                       ##
+##     This is the configuration file for the Comand Line Interface      ## 
+## part of TRACS. It contains all the necessary values for the program   ## 
+## to run properly. There are different seccions with different          ##
+## parameters according to what those parameters correspont to.          ##
+##                                                                       ##
+##     All the parameters are clearly labeled and accompanied by a       ##
+## description of what they do and the units they are in.                ##
+##                                                                       ##
+##     You will also find a brief description of how TRACS works         ##
+## internally and a trouble-shooting guide to solve the most common      ##
+## problems encountered during TRACS instalation.                        ##
+##                                                                       ##
+###########################################################################
+###########################################################################
+##                                                                       ##
+##                           BASIC GUIDELINES                            ##
+##                                                                       ##
+##    Usage of the configuration file is very simple and only requires   ##
+## to follow two simple rules:                                           ##
+##       - Only change the values and keep the rest EXACTLY the same     ##
+##       - DON'T TOUCH anything else                                     ##
+##                                                                       ##
+##    If you find this instructions too easy to follow please know that  ##
+## the parser used by TRACS reads values between '=' and ' ;' and stores  ##
+## them in the corresponding variables according to the order they are   ##
+## placed on the file. Any line starting with '#' is regarded as comment ## 
+## and will be automatically omitted.                                    ##
+##                                                                       ##
+##                                                                       ##
+###########################################################################
+###########################################################################
+##                                                                       ##
+##                       LICENSE AND COPYRIGHT                           ##
+##                                                                       ##
+##    TRACS is released  under GPLv3 license. You should have gotten a   ##
+## copy of the license with the software but in case you haven't, please ##
+## check: [LINK HERE]                                                    ##
+##                                                                       ##
+##  ---- TL ;DR ----                                                     ##
+##    Use, copy, modify if desired ; give credit if appropiate ;         ##
+## contribute if improved.                                               ##
+##                                                                       ##
+###########################################################################
+###########################################################################
+
+
+
+#-------------------------DETECTOR PROPERTIES-----------------------------#
+#                                                                      
+#    Here one should insert the properties of the detector to be simulated
+# but not the technical details about the computational part that takes 
+# part inside the class SMSDetector. 
+#             !!!!! Only Physical Properties Here !!!!!
+
+# Distance between detector edges in the conventional Z-direction
+# This is typically called thickness and can be viewed as the distance 
+# between electrodes connected to the detector
+Depth = 50.0   # Double in micrometers
+
+# Width of the read-out strips
+Width = 1300.0   # Double in micrometers
+
+# Distance between read-out strips
+Pitch = 1300.0   # Double in micrometers
+
+# Number of neighbouring strips simulated on each side of the main 
+# read-out strip (where we read and collect signal)
+NeighbouringStrips = 0   # 0 for a diode
+
+# Temperature of the detector, affects mobility
+Temperature = 298.0   # Double in Kelvin
+
+
+# Number of threads used for simulation. Crashes if nThreads != 1
+NumberOfThreads = 1   # Integer
+
+#---------------------------- MESH PROPERTIES ----------------------------#
+#    
+#    For solving the PDEs(ie.: Poisson's equation) TRACS divides the area 
+# of the detector in cells using a mesh. Here you can choose wether you 
+# want to have coarse mesh for faster simulation or rather prefer a finner 
+# more accurate PDE solution
+
+# Number of cells for the mesh in the X direction
+CellsX = 150   # Integer
+
+# Number of cells for the mesh in the Y direction
+CellsY = 150   # Integer
+
+#-------------------------- DOPING PROPERTIES ----------------------------#
+#
+#    Here you can decide which type of substrate and implant you want to 
+# simulate. Options are 'p' for p-doped (acceptor impurities) or 'n' for
+# n-doped (donnor impurities).
+
+# Bulk type. Main detector volumen where carriers drift
+Bulk = p   # Character
+
+# Implant  type. Highest doped volumen.
+Implant = n   # Character
+
+
+#-------------------------- EFFECTIVE DOPING CONCENTRATION PROFILE PARAMs ----------------------------#
+#
+#     Set the effective doping profile parameters for an Avalanche region formed inside of the bulk.  
+# Here, LGAD-like detectors are assumed. 
+# A simpel Gaussian is used to emulate this addiotional doping profile.
+# --> updated (10/13/2019) :  two independent Gaussian profiles can be set.
+# Note that there is no convolution effect but they are simply added.
+
+SetAvalanche = no   # yes: set this doping profile.  no: turn-off, even though parameters are given bellow.
+
+# First Gaussian strucuture
+DopingProfile_PeakHeight   = 8.13e16       # unit in  cm^-3
+DopingProfile_PeakPosition = 0.91          # Z (vertical) position from the top. unit in micron-meter  
+DopingProfile_GaussSigma  = 0.173           # unit in micron-meter
+
+# Second Gaussian strucuture
+#DopingProfile_PeakHeight2   = 1e15       # unit in  cm^-3
+#DopingProfile_PeakPosition2 = 40.0        # Z (vertical) position from the top. unit in micron-meter  
+#DopingProfile_GaussSigma2  = 0.3            # unit in micron-meter
+
+#-- Use following example, if the second Gaussian is not necessary.
+#
+#-- Peakheight=0 would be enough.
+#-- Note that the Gaussian sigma should be >0,
+#-- otherwise divergence happenes. ( though it should be protected in the code ...)
+
+DopingProfile_PeakHeight2   = 0.0e14       # unit in  cm^-3
+DopingProfile_PeakPosition2 = 0.0             # Z (vertical) position from the top. unit in micron-meter  
+DopingProfile_GaussSigma2  = 0.01           # unit in micron-meter
+
+# Since it is time efficient to skip the actual calculation,
+# but only run the job for confirmation of settings/histograms,
+# below flag is temorally prepared. Oftenly, there is a function of run-start/run-stop/... ,  thus we do not need it.....
+
+SkipEventLoop = no   # yes: Skip the loop for carriers. no: Normal setting. Run all of carriers.
+
+
+#  Maximum number of charge multiplication factor.
+#  This factor is the ratio between the total carriers newly generated
+#  and the initial carriers, recorded in the carrier file.
+#  (current) Program will escape from the avalanche loop, if the ratio exceeds this number.
+
+MaxMultiplicationRatio = 10.0         # no unit.
+                      
+
+#----------------------- ILLUMINATION PROPERTIES -------------------------#
+#
+#     Here you can state the properties of the laser used for carrier 
+# generation. The properties are implemented through the carrier file that 
+# TRACS reads as imput. This values are only used for naming the 
+# output and for further analysis using TCT+ software.
+
+# Wavelenght of the laser shot at the detector, typically is IR for 
+# edge-TCT (~1064nm) and red for top/bottom-TCT (~663nm)
+Lambda = 1064   # In nm
+#Lambda = 663   # In nm
+
+# Type of scan to be simulated. Typical scans are: 
+#   -edge-TCT: IR laser moved along Z-axis
+#   -top-TCT: Red laser, one shot at different voltages or scan on X-Y
+#   -bottom-TCT: Red laser, one shot at different voltages or scan on X-Y
+
+ScanType = edge   # edge/top/bottom
+
+# File where the carriers are stored. TRACS already provides carrier files 
+# for edge-TCT and TCT simulations but anyother file can be used, provided 
+# it has the same format. Here you should provide the path to the file 
+# to be used in the simulation. Relative path is set to the folder from 
+# which TRACS is executed.
+
+#CarrierFile = tct_IR.carriers
+CarrierFile = etct.carriers
+
+
+#------------------------ ELECTRONICS SHAPING ----------------------------#
+
+#    The electronics shaping on TRACS includes not only basic RC-shaping 
+# but also convolution with the amplifier transfer-function(TF). The 
+# amplifier TF is an actual amplifier response to a delta signal saved as 
+# a ROOT histogram/file. The user can use his own TF as long as it is in 
+# the same format as the original. The original can be found inside 
+# TRACS/src/files2move2bin/ 
+
+# Capacitance of the capacitor in the RC circuit.
+Capacitance = 4.11e-12   # in Farad
+
+# Resistance of the circuit is assumed to be 50 Ohm and cannot be changed 
+# for the moment
+
+#TransferFunction = NO_TF
+
+TransferFunction = /home/physicist/myApp/Centered_50ps_TransferFunction_Cividec_14112017.root
+
+
+#----------------------- SIMULATION TIMING -------------------------------#
+
+#     Here we configure the time properties of the simulation; namely the 
+# time step and the maximum time for the simulation. The most important 
+# parameter is the Time Step, it should be small enough to yeild accurate 
+# output but large enough so that the simulation doesn't take forever. 
+# The TotalTime simulated should be big enough to contain all the signal.
+
+# Time elapsed between simulation steps. The finer the time step the 
+# more accurate the simulation will be; on the other hand, the coarser 
+# the time step, the faster the simulation will finish
+
+TimeStep = 25.e-12   # in seconds
+#TimeStep = 10.e-12   # in seconds
+
+# Time elapsed from the start to the end of the simulation. As long as 
+# the whole signal is collected before the end of the simulation it has 
+# no effect of the results
+
+TotalTime = 50.e-9   # in seconds
+#TotalTime = 50.145e-9   # in seconds to adjust the measurement data
+
+#------------------------ VOLTAGE PROPERTIES -----------------------------#
+
+#     In this section we set up the voltages that will be applied to the 
+# detector. These voltages include the depletion voltage as well as the 
+# various bias voltages that one may wish to apply to the detector.
+
+# Starting bias voltage for the simulation. One usually wishes that it is 
+# higher than the depletion voltage for TRACS does not simulate thermal 
+# diffusion effects.
+
+InitialVoltage = 200. #volts
+
+# Difference in bias voltage between one simulation and the next one.
+VoltageStep = 20 # in volts
+
+# Maximum bias voltage applied to the detector. The maximum voltage 
+# simulated may be lower if it cannot be reached from InitialVoltage 
+# in steps of size VoltageStep.
+
+MaxVoltage = 200. # in volts  
+
+# Value of the Bias voltage at which the detector is fully depleted. For 
+# non-irradiated samples it allows us to calculate the Neff distribution 
+# and impurity concentration.For irradiated samples it is completely 
+# meaningless as the Neff is defined separately
+DepletionVoltage = 12.8 # in volts
+
+#-------------------------- Z-SCAN PROPERTIES ----------------------------#
+
+#     This part is meanly designed for edge-TCT/TPA scans but one can 
+# implement this scan for top/bottom-TCT if one wishes to do some exotic
+# (non-real world) simulations.
+#
+#     Z-Scan should be a self-explanatory name as it refers to a scan of 
+# the detector performed by moving the laser (or laser focus in TPA) in 
+# the Z direction. In this direction the detector extends  from Z = 0 
+# to Z = Depth.
+
+# First thing we need to set up for the Z-Scan is the starting position of
+# the laser. typically one wishes to perform either a full scan or just 
+# one position; in the former case starting at a negative value might make 
+# sense if one wishes to have the laser beam completely out of the 
+# detector.
+
+InitialZ = 0. # in micrometers
+
+# Next thing to set up is the last position of the laser for the 
+# simulation. As withe the initial position one might wish to have the
+# laser fall completely outside of the detector, this can be donde by 
+# setting MaximumZ to a value higher than Depth.
+MaximumZ = 0. # in micrometers
+
+# Quite intuitively StepInZ refers to the distance moved the laser along 
+# the Z-axis from one waveform simulation to the other. Recomended 
+# ScanStep values range from 1-3 to 10 micrometers but can be made as big 
+# or small as desired.
+StepInZ = 1.
+
+
+#-------------------------- Y-SCAN PROPERTIES ----------------------------#
+
+#     This part is meanly designed for top/bottom-TCT and TPA scans but 
+# one can implement this scan for top/bottom-TCT if one wishes to do some 
+# exotic (non-real world) simulations.
+#
+#     Y-Scan should be a self-explanatory name as it refers to a scan of 
+# the detector performed by moving the laser (or laser focus in 
+# TPA/edge-TCT) in the Y direction. In this direction the detector 
+# extends from Y = 0 to Y = (2nns+1)*pitch. 
+# [nns is NumberOfNeighbouringStrips]
+
+# First thing we need to set up for the Y-Scan is the starting position of
+# the laser. typically one wishes to perform either a full scan or just 
+# one position; in the former case starting at a negative value might make 
+# sense if one wishes to have the laser beam completely out of the 
+# detector.
+InitialY = 0. # in micrometers
+
+# Next thing to set up is the last position of the laser for the 
+# simulation. As withe the initial position one might wish to have the
+# laser fall completely outside of the detector, this can be donde by 
+# setting MaximumY to a value higher than (2nns+1)*pitch. 
+# [nns is NumberOfNeighbouringStrips]
+MaximumY = 0. # in micrometers
+
+# Quite intuitively StepInY refers to the distance moved the laser along 
+# the Y-axis from one waveform simulation to the other. 
+StepInY = 5. # in micrometers
+
+#----------------------- IRRADIATION PARAMETERS --------------------------#
+
+#     Irradiation causes damage in silicon detectors as the silicon 
+# lattice gets disrupted. In TRACS this effects are parametrized by a 
+# trapping time and a modified space-charge distribution (hereafter 
+# refered as Neff). The trapping effect is modeled here by a time constant 
+# that drives an exponential loss of signal with time elapsed. Neff 
+# changes with irradiation from a constant to a different shape that has 
+# been succesfully parametrized by 3 different straight lines (see readme 
+# for more details), its effect on the output signal is the modification 
+# of the electric field inside the detector and thus, modification of the 
+# shape of the pulse as typical pulses (TCT/eTCT...) are very related with 
+# the profile of the electric field
+#  
+#     In this section you can modify this irradiation effects by changing 
+# the trapping constant and implementing your own Neff. Irradiation 
+# fluence can also be modified but only acts like a trigger as explained 
+# below.
+#
+# Trapping time-constant, affects total collected signal
+TrappingTime = 1.e9   # Double in seconds
+
+# Fluence to which the detector has been irradiated. Controls whether 
+# simulated diode is irradiated(>0) or not(==0)
+Fluence = 0.   # Double in neutronEquivalents
+
+# Neff - CUSTOM DISTRIBUTION
+#
+# This is the most important part of the simulation of irradiated 
+# detectors. One should implement a well known Neff for the simulation to 
+# be accurate. Otherwise it is suggested to use the Neff-calculator 
+# function in TRACS provided that you have some real measurements.
+#
+# The parameters used for Neff definition are the crossing points of the 
+# three straight lines; continuity in the Neff is assumed. The axis are 
+# Z-axis, representing the  effective charge carrier concentration. For 
+# simplicity and easier understanding we provide a very schematic picture 
+# of what a Neff could look like and where are the points located.
+#
+# There are 3 different Neff parametrizations in TRACS at the moment, 
+# namely Linear, Triconstant, Trilinear. 
+# The Linear parametrization Neff is a straight line joining the points
+# (z0,y0) and (z3, y3). 
+# The Triconstant assumes 3 zones with the middle one starting at z1 and 
+# ending at z2. In this approach Neff is a constant in a given region 
+# with value y0 (first region), y1(second region) and y2(third region). 
+# The Trilinear approach is the more complex and generic case, it 
+# contains Linear as a particular case. Here we have 3 zones just like
+# in Triconstant, but with Neff follow a linear dependance on Z, different
+# for each zone. An schematic plot of this more complex parametrization is
+# shown below.
+
+	#=====================================================#
+	#           CUSTOM Neff EXAMPLE (Trilinear)           #
+	#=====================================================#
+	#                                                     #
+	#                                            Y        #    
+	#                                            ^        #  
+	#       (z0,y0)                   AXIS =>    | —>Z    #      
+	#       \                                             #     
+	#        \                                            #       
+	#         \                                           #      
+	#          \                                          #     
+	#           \___________ (z2,y2)                      #      
+	#      (z1,y1)          \                             #       
+	#                        \                            #      
+	#                         \                           #      
+	#                          \                          #      
+	#                           \(z3,y3)                  #      
+	#                                                     #
+	#=====================================================#
+	
+# Neff Parametrization
+# Choose a String from Linear / Triconstant / Trilinear . If no String recognised, TRACS defaults to Trilinear.
+NeffParametrization = Trilinear 
+
+# Y-Axis
+# For Y units are not given as carriers/cm^3 as typically used by in some 
+# other units.
+#y0 = -25.;
+#y1 = 0.02;
+#y2 = 0.22;
+#y3 = 33.; #--> NOirrad_dt100ps_5pF_tNOtrappingns_dz80um_dy5dV100V_2nns_edge_0_noconv.Zscan.root
+
+y0 = -15.; 
+y1 = 0.02  ; 
+y2 = 0.22  ; 
+y3 = 10. ;
+
+# Z-Axis
+# Please note that z0 = 0.0 and z3 = Depth are given by the geometry of 
+# the detector and cannot be changed.
+
+
+z1 = 45.; # in micrometers
+
+z2 = 46.; # in micrometers
+
+#Diffusion
+diffusion = 1 ; #Set it to 1 to activate diffusion effects.
+
+#----------------------- FITTING PARAMETERS --------------------------#
+#Fitting parametrization
+normalizator = 170.
+tolerance = 200 ;
+chiFinal =  1. ;
+
+# Temporally prepared !  to match the polarity between the simulation and the data to be fitted,
+# Probably,,, if all of settings,  p/n polarities, bias voltage, etc.  are fine,  we do not need this parameter.
+
+SimulationPolarityInversion = yes      # yes: output ( volt ) of simulation will be inversed.  no: Normal setting. No inversion operation.
