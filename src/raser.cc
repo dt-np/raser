@@ -5454,10 +5454,9 @@ void CarrierCollection::add_carriers_from_file(const std::string& filename, cons
 			//std::cout << "Error while reading file" << std::endl;
 			break;
 		} 
-		extra_y = depth;
 		//Calculate average beam position
 		beamy += x_init;
-		beamz += y_init + extra_y;
+		beamz += y_init;
 
         std::unique_ptr<Carrier> ptr( new Carrier(carrier_type, q, x_init, y_init + extra_y, _detector, gen_time) );
         _carrier_list_sngl.push_back( std::move(ptr) );        
