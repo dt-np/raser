@@ -27,14 +27,17 @@ class R2dDetector:
         self.n_x = int(self.l_x/lx_step) #mesh step
         self.n_y = int(self.l_y/ly_step)
     def set_para(self,doping,voltage,temperature):
-        self.d_neff = doping #dopingX1e12 cm^-3
-        self.v_voltage = voltage #Voltage
-        self.temperature = temperature #Temperature
-        self.n_bin = 1000    #or 100 or 3000
-        self.t_end = 2e-9
+        self.d_neff = doping   #dopingX1e12 cm^-3
+        self.v_voltage = voltage   #Voltage
+        self.temperature = temperature   #Temperature
+        self.t_bin = 50e-12
+        self.t_end = 6.0e-9
+        self.t_start = 0
+        self.n_bin = int((self.t_end-self.t_start)/self.t_bin)
         self.positive_cu = ROOT.TH1F("charge+","Positive Current",self.n_bin,0,self.t_end)
         self.negtive_cu = ROOT.TH1F("charge-","Negative Current",self.n_bin,0,self.t_end)
         self.sum_cu = ROOT.TH1F("charge","Current",self.n_bin,0,self.t_end)
+
 #Calculate the weighting potential and electric field
 class Fenics_cal:
     #parameter of SiC
@@ -46,14 +49,13 @@ class Fenics_cal:
         self.lx_step = self.l_x/self.n_x
         self.ly_step = self.l_y/self.n_y
         self.model = model
-
         self.p_electric = []
         self.w_p_electric = []
-        #perm_sic = 9.76  #Permittivity
-        perm_sic = 11.7
+        #perm_sic = 9.76  #SiCPermittivity
+        perm_sic = 11.7   #SiPermittivity
         e0 = 1.60217733e-19
         perm0 = 8.854187817e-12   #F/m
-        self.f_value = -e0*my_d.d_neff*1e6/perm0/perm_sic
+        self.f_value = e0*my_d.d_neff*1e6/perm0/perm_sic
         self.tol = 1e-14
         #fenics space        
         mesh = fenics.RectangleMesh(fenics.Point(0, 0), fenics.Point(my_d.l_x, my_d.l_y), int(my_d.n_x), int(my_d.n_y))
@@ -162,7 +164,7 @@ class Fenics_cal:
             ny2_v=ny_value
 
         if (nx_value<=0):
-            r_u=0                    #r_u
+            r_u=0
             nx1_v=nx2_v
         elif (nx_value>=self.n_x-1):
             r_u=0
@@ -192,26 +194,20 @@ class Fenics_cal:
 
 #####The tracks of the different incident paticle (laser)
 class TCTTracks:
-    def t_mip(self,i_z,i_r,nocarrier):
-        self.p_tracks = [ [ [] for n in range(i_z-1) ] for m in range (i_r-1)]
-        #self.d_tracks = []
-        for i in range(i_r-1):
+    def t_mip(self, i_z, i_r, zlen, rlen, nocarrier):
+        self.p_tracks = [ [ [] for n in range(i_z) ] for m in range (i_r)]
+        for i in range(i_r):
             p_entry = [0, i]
-            p_exit  = [1300, i]
+            p_exit  = [zlen, i]
             p_x=p_entry[0]
             p_y=p_entry[1]
-            # self.py_entry=[]
-            for j in range(i_z-1):
-                if nocarrier[j, i] >1:
-                    x_div_point = j*10+5
-                    y_div_point = i*1+0.5
-                    self.p_tracks[i][j].append(x_div_point)
-                    self.p_tracks[i][j].append(y_div_point)
-                else:
-                    x_div_point = j*10+5
-                    y_div_point = i*1+0.5
+            for j in range(i_z):
+                x_div_point = j*(zlen/i_z)+ (zlen/(i_z*2))
+                y_div_point = i*(rlen/i_r)+ (rlen/(i_r*2))
+                self.p_tracks[i][j].append(x_div_point)
+                self.p_tracks[i][j].append(y_div_point)
 
-#####The tracks of the different incident paticle (mip)
+####The tracks of the different incident paticle (mip)
 class Tracks:
     def t_mip(self,p_entry,p_exit,n_div):
         self.p_entry = p_entry
@@ -243,7 +239,7 @@ def si_mobility(charge,aver_e,my_detector):
         betap = 1.0
         vsatp = 9.05e6 * math.sqrt(math.tanh(312.0/T))
         lfm = uminp + (ulp-uminp)/(1.0 + math.pow(Neff*1e12 / Crefp, alpha))
-        hfm = 2*lfm / (1.0+math.pow(1.0 + math.pow(2*lfm * E / vsatp, betap), 1.0 / betap))                        
+        hfm = 2*lfm / (1.0+math.pow(1.0 + math.pow(2*lfm * E / vsatp, betap), 1.0 / betap))                       
     else:
         uln = 1430.0 * math.pow(T / 300.0, -2.0)
         uminn = 80.0*math.pow(T / 300.0, -0.45)
@@ -251,7 +247,7 @@ def si_mobility(charge,aver_e,my_detector):
         betan = 2
         vsatn = 1.45e7 * math.sqrt(math.tanh(155.0/T))
         lfm = uminn + (uln-uminn)/ (1.0 + math.pow(Neff*1e12 / Crefn, alpha))
-        hfm = 2*lfm / (1.0+math.pow(1.0 + math.pow(2*lfm * E / vsatn, betan), 1.0/betan))                    
+        hfm = 2*lfm / (1.0+math.pow(1.0 + math.pow(2*lfm * E / vsatn, betan), 1.0/betan))
     return hfm
 
 def sic_mobility(charge,aver_e,my_detector):
@@ -282,7 +278,7 @@ class Drifts:
         self.muhh=1650   #mobility related with the magnetic field (now silicon useless)
         self.muhe=310
         self.BB=np.array([0,0])
-        self.sstep=0.1 #drift step
+        self.sstep=1 #drift step
         self.kboltz=8.617385e-5 #eV/K
         self.max_drift_len=1e9 #maximum diftlenght [um]
         self.d_dic_n = {}
@@ -365,9 +361,9 @@ class Drifts:
         if(self.n_step>10000):
             self.end_cond=7
 
-    def save_inf_track(self):
+    def save_inf_track(self,my_d):
         e0 = 1.60217733e-19
-        if(self.charge<0):
+        if((self.charge<0 and my_d.v_voltage<0) or (self.charge>0 and my_d.v_voltage>0)): 
             if(self.charg>0):
                 self.d_dic_p["tk_"+str(self.n_track)][0].append(self.d_x)
                 self.d_dic_p["tk_"+str(self.n_track)][1].append(self.d_y)
@@ -383,7 +379,6 @@ class Drifts:
         my_d.positive_cu.Reset()
         my_d.negtive_cu.Reset()
         my_d.sum_cu.Reset()
-        self.sum_p_current = []
         test_p = ROOT.TH1F("test+","test+",my_d.n_bin,0,my_d.t_end)
         test_n = ROOT.TH1F("test-","test-",my_d.n_bin,0,my_d.t_end)
         test_sum = ROOT.TH1F("test sum","test sum",my_d.n_bin,0,my_d.t_end)
@@ -481,7 +476,7 @@ class Drifts:
                         self.d_x=self.d_cx
                         self.d_y=self.d_cy
                         self.wpot=my_f.cal_point_field(self.d_x,self.d_y,my_f.p_w_electric)
-                        Drifts.save_inf_track(self)  
+                        Drifts.save_inf_track(self,my_d)  
                         Drifts.drift_end_condition(self)                                                                         
                     self.n_step+=1
         Drifts.cal_current(self,my_d,my_t)
@@ -534,9 +529,6 @@ class TCTDrifts:
         for n in range(len(my_track.p_tracks)*len(my_track.p_tracks[0])):
             self.d_dic_n["tk_"+str(n+1)] = [ [] for n in range(4) ]
             self.d_dic_p["tk_"+str(n+1)] = [ [] for n in range(4) ]
-        self.pcu = [ [ [] for n in range(len(my_track.p_tracks[0])) ] for m in range(len(my_track.p_tracks))]
-        self.ncu = [ [ [] for n in range(len(my_track.p_tracks[0])) ] for m in range(len(my_track.p_tracks))]
-        self.cu  = [ [ [] for n in range(len(my_track.p_tracks[0])) ] for m in range(len(my_track.p_tracks))]
 
     def initial_parameter(self):
         self.end_cond=0
@@ -560,8 +552,8 @@ class TCTDrifts:
             self.delta_y=0
 
     def drift_v(self,my_d,my_f):
-        ex_delta_f = my_f.cal_point_field(self.d_x+self.delta_x,self.d_y+self.delta_y,my_f.ex_electric)
-        ey_delta_f = my_f.cal_point_field(self.d_x+self.delta_x,self.d_y+self.delta_y,my_f.ey_electric)
+        ex_delta_f = my_f.cal_point_field(self.d_x+self.delta_x, self.d_y+self.delta_y, my_f.ex_electric)
+        ey_delta_f = my_f.cal_point_field(self.d_x+self.delta_x, self.d_y+self.delta_y, my_f.ey_electric)
         e_delta_f = np.array([ex_delta_f,ey_delta_f])
         aver_e=(np.linalg.norm(self.e_field)+np.linalg.norm(e_delta_f))/2*1e4
         self.v_drift=si_mobility(self.charg,aver_e,my_d)*aver_e
@@ -574,10 +566,10 @@ class TCTDrifts:
             self.end_cond=9
         else:
             #off when the field gets large enough
-            DiffOffField=8  # the silicon value?  
+            DiffOffField=8   # the silicon value ???
             if(np.linalg.norm(e_delta_f)<DiffOffField):
                 self.s_time=self.sstep*1e-4/self.v_drift
-                s_sigma=math.sqrt(2*self.kboltz*si_mobility(self.charg,aver_e,my_d)*my_d.temperature*self.s_time)
+                s_sigma=math.sqrt(2 *self.kboltz *si_mobility(self.charg, aver_e, my_d) *my_d.temperature *self.s_time)
                 self.dif_x=random.gauss(0,s_sigma)*1e4
                 self.dif_y=random.gauss(0,s_sigma)*1e4
             else:
@@ -612,9 +604,9 @@ class TCTDrifts:
         if(self.n_step>10000):
             self.end_cond=7
 
-    def save_inf_track(self):
+    def save_inf_track(self,my_d):
         e0 = 1.60217733e-19
-        if(self.charge<0):
+        if((self.charge<0 and my_d.v_voltage<0) or (self.charge>0 and my_d.v_voltage>0)):
             if(self.charg>0):
                 self.d_dic_p["tk_"+str(self.n_track)][0].append(self.d_x)
                 self.d_dic_p["tk_"+str(self.n_track)][1].append(self.d_y)
@@ -630,38 +622,25 @@ class TCTDrifts:
         my_d.positive_cu.Reset()
         my_d.negtive_cu.Reset()
         my_d.sum_cu.Reset()
-        self.sum_p_current = []
         test_p = ROOT.TH1F("test+","test+",my_d.n_bin,0,my_d.t_end)
         test_n = ROOT.TH1F("test-","test-",my_d.n_bin,0,my_d.t_end)
         test_sum = ROOT.TH1F("test sum","test sum",my_d.n_bin,0,my_d.t_end)
-        m = 0
         for i_r in range(len(my_t.p_tracks)):
-            for i_z in range (len(my_t.p_tracks[i_r])):
-                if nocarrier[i_z, i_r] >1:
-                    for i in range(len(self.d_dic_p["tk_"+str(i_r*129+i_z+1)][2])):
-                        test_p.Fill(self.d_dic_p["tk_"+str(i_r*129+i_z+1)][3][i],self.d_dic_p["tk_"+str(i_r*129+i_z+1)][2][i])
-                    test_p = Drifts.get_current_his(self,test_p)
-                    test_p.Scale(nocarrier[i_z, i_r])
-                    my_d.positive_cu.Add(test_p)
-                    for i in range(len(self.d_dic_n["tk_"+str(i_r*129+i_z+1)][2])):
-                        test_n.Fill(self.d_dic_n["tk_"+str(i_r*129+i_z+1)][3][i],self.d_dic_n["tk_"+str(i_r*129+i_z+1)][2][i])
-                    test_n = Drifts.get_current_his(self,test_n)
-                    test_n.Scale(nocarrier[i_z, i_r])
-                    my_d.negtive_cu.Add(test_n)
-                    for i in range(len(self.d_dic_p["tk_"+str(i_r*129+i_z+1)][2])):
-                        self.pcu[i_r][i_z].append(test_p.GetBinContent(i))
-                        a = test_p.GetBinContent(i)
-                        self.ncu[i_r][i_z].append(test_n.GetBinContent(i))
-                        b = test_n.GetBinContent(i)
-                        self.cu[i_r][i_z].append(a+b)
-                    test_p.Reset()
-                    test_n.Reset()
-                else:
-                    self.cu.append(0)
-                    continue
+            for i_z in range(len(my_t.p_tracks[i_r])):
+                for i in range(len(self.d_dic_p["tk_"+str(i_r*(len(my_t.p_tracks[0]))+i_z+1)][2])):
+                    test_p.Fill(self.d_dic_p["tk_"+str(i_r*(len(my_t.p_tracks[0]))+i_z+1)][3][i],self.d_dic_p["tk_"+str(i_r*(len(my_t.p_tracks[0]))+i_z+1)][2][i])
+                test_p = TCTDrifts.get_current_his(self,test_p)
+                test_p.Scale(nocarrier[i_z, i_r])
+                my_d.positive_cu.Add(test_p)
+                for i in range(len(self.d_dic_n["tk_"+str(i_r*(len(my_t.p_tracks[0]))+i_z+1)][2])):
+                    test_n.Fill(self.d_dic_n["tk_"+str(i_r*(len(my_t.p_tracks[0]))+i_z+1)][3][i],self.d_dic_n["tk_"+str(i_r*(len(my_t.p_tracks[0]))+i_z+1)][2][i])
+                test_n = TCTDrifts.get_current_his(self,test_n)
+                test_n.Scale(nocarrier[i_z, i_r])
+                my_d.negtive_cu.Add(test_n)
+                test_p.Reset()
+                test_n.Reset()
         my_d.sum_cu.Add(my_d.positive_cu)
         my_d.sum_cu.Add(my_d.negtive_cu)
-
     def get_current_his(self,histo):
         e0 = 1.60217733e-19
         hist = ROOT.TH1F()
@@ -676,47 +655,43 @@ class TCTDrifts:
         self.n_track=0
         for n in range(len(my_t.p_tracks)):
             for i in range(len(my_t.p_tracks[n])):
-                if nocarrier[i, n] > 1:
-                    self.n_track = self.n_track + 1
-                    for j in range(2):
-                        if (j==0):
-                            self.charg=1 #hole
-                        if (j==1):
-                            self.charg=-1 #electron
-                        TCTDrifts.initial_parameter(self)
+                self.n_track = self.n_track + 1
+                for j in range(2):
+                    if (j==0):
+                        self.charg=1 #hole
+                    if (j==1):
+                        self.charg=-1 #electron
+                    TCTDrifts.initial_parameter(self)
                     #generated particles positions
-                        self.d_x=my_t.p_tracks[n][i][0]#initial position
-                        self.d_y=my_t.p_tracks[n][i][1]
-                        self.s_time=0.0
-                        while (self.end_cond==0):
-                            #print(self.d_x,self.d_y)
-                            if (self.d_y>=(my_d.l_y-1) or self.d_x>=(my_d.l_x-1)):
-                                self.end_cond=3  
-                            else:                                       
-                                # field of the position
-                                ex_field = my_f.cal_point_field(self.d_x,self.d_y,my_f.ex_electric)
-                                ey_field = my_f.cal_point_field(self.d_x,self.d_y,my_f.ey_electric)
-                                self.e_field = np.array([ex_field,ey_field])
-                                #delta_poisiton
-                                TCTDrifts.delta_p(self)
-                                #drift_position
-                                TCTDrifts.drift_v(self,my_d,my_f)
-                                #drift_next_posiiton
-                                TCTDrifts.drift_s_step(self,my_d)
-                                #charge_collection
-                                delta_Ew=my_f.cal_point_field(self.d_cx,self.d_cy,my_f.p_w_electric)-my_f.cal_point_field(self.d_x,self.d_y,my_f.p_w_electric)
-                                self.charge=self.charg*delta_Ew
-                                if(self.v_drift!=0):
-                                    self.d_time=self.d_time+self.s_time
-                                    self.path_len+=self.sstep
-                                self.d_x=self.d_cx
-                                self.d_y=self.d_cy
-                                self.wpot=my_f.cal_point_field(self.d_x,self.d_y,my_f.p_w_electric)
-                                TCTDrifts.save_inf_track(self)  
-                                TCTDrifts.drift_end_condition(self)                                                                         
-                            self.n_step+=1
-                else:
-                    continue
+                    self.d_x=my_t.p_tracks[n][i][0]#initial position
+                    self.d_y=my_t.p_tracks[n][i][1]
+                    self.s_time=0.0
+                    while (self.end_cond==0):
+                        if (self.d_y>(my_d.l_y-0.5) or self.d_x>(my_d.l_x-5)):
+                            self.end_cond=3  
+                        else:                            
+                            # field of the position
+                            ex_field = my_f.cal_point_field(self.d_x,self.d_y,my_f.ex_electric)
+                            ey_field = my_f.cal_point_field(self.d_x,self.d_y,my_f.ey_electric)
+                            self.e_field = np.array([ex_field,ey_field])
+                            #delta_poisiton
+                            TCTDrifts.delta_p(self)
+                            #drift_position
+                            TCTDrifts.drift_v(self,my_d,my_f)
+                            #drift_next_posiiton
+                            TCTDrifts.drift_s_step(self,my_d)
+                            #charge_collection
+                            delta_Ew=my_f.cal_point_field(self.d_cx,self.d_cy,my_f.p_w_electric)-my_f.cal_point_field(self.d_x,self.d_y,my_f.p_w_electric)
+                            self.charge=self.charg*delta_Ew
+                            if(self.v_drift!=0):
+                                self.d_time=self.d_time+self.s_time
+                                self.path_len+=self.sstep
+                            self.d_x=self.d_cx
+                            self.d_y=self.d_cy
+                            self.wpot=my_f.cal_point_field(self.d_x,self.d_y,my_f.p_w_electric)
+                            TCTDrifts.save_inf_track(self,my_d)  
+                            TCTDrifts.drift_end_condition(self)                                                                         
+                        self.n_step+=1
         TCTDrifts.cal_current(self,my_d,my_t,nocarrier)
 
     def draw_drift_path(self):
@@ -756,7 +731,6 @@ class Amplifier():
         hist = ROOT.TH1F()
         my_d.sum_cu.Copy(hist)
         max_num = hist.GetNbinsX()
-        print(max_num)
         preamp_Q = [0.0]*max_num
         itot = [0.0]*max_num
         shaper_out_Q = [0.0]*max_num
@@ -794,7 +768,6 @@ class Amplifier():
         return qtot,hist
 
 def draw_plot(my_detector,ele_current,qtot,my_drift):
-
     ROOT.gStyle.SetOptStat(0)
     c = ROOT.TCanvas("c", "canvas", 200,10,1000, 1000)
     c.SetLeftMargin(0.12)
@@ -817,8 +790,16 @@ def draw_plot(my_detector,ele_current,qtot,my_drift):
     my_detector.positive_cu.Draw("SAME HIST")
     my_detector.negtive_cu.Draw("SAME HIST")
     c.Update()
-    rightmax = 1.1*ele_current.GetMinimum()
-    n_scale = ROOT.gPad.GetUymin() / rightmax
+    if ele_current.GetMinimum() <0:
+        rightmax = 1.1*ele_current.GetMinimum()
+    else:
+        rightmax = 1.1*ele_current.GetMaximum()
+    if rightmax == 0:
+        n_scale = 0
+    elif ele_current.GetMinimum() <0:
+        n_scale = ROOT.gPad.GetUymin() /rightmax
+    else:
+        n_scale = ROOT.gPad.GetUymax() /rightmax
     ele_current.Scale(n_scale)
     ele_current.Draw("SAME HIST")
     my_detector.sum_cu.SetLineColor(3)
@@ -860,15 +841,12 @@ def draw_plot(my_detector,ele_current,qtot,my_drift):
     #print(qtot*1e15)
     my_drift.draw_drift_path()
 
-
-
 def TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier):
-
     ROOT.gStyle.SetOptStat(0)
     c = ROOT.TCanvas("c", "canvas", 200,10,1000, 1000)
     c.SetLeftMargin(0.12)
     c.SetRightMargin(0.12)
-    # c.SetTopMargin(0.12)
+    c.SetTopMargin(0.12)
     c.SetBottomMargin(0.14)
     my_detector.sum_cu.GetXaxis().SetTitleOffset(1.2)
     my_detector.sum_cu.GetXaxis().SetTitleSize(0.05)
@@ -886,8 +864,16 @@ def TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier):
     my_detector.positive_cu.Draw("SAME HIST")
     my_detector.negtive_cu.Draw("SAME HIST")
     c.Update()
-    rightmax = 1.1*ele_current.GetMinimum()
-    n_scale = ROOT.gPad.GetUymin() / rightmax
+    if ele_current.GetMinimum() <0:
+        rightmax = 1.1*ele_current.GetMinimum()
+    else:
+        rightmax = 1.1*ele_current.GetMaximum()
+    if rightmax == 0:
+        n_scale = 0
+    elif ele_current.GetMinimum() <0:
+        n_scale = ROOT.gPad.GetUymin() /rightmax
+    else:
+        n_scale = ROOT.gPad.GetUymax() /rightmax
     ele_current.Scale(n_scale)
     ele_current.Draw("SAME HIST")
     my_detector.sum_cu.SetLineColor(3)
@@ -935,140 +921,19 @@ def TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier):
     mincu = min(elecu)
     return(mincu)
 
-def draw_nocarrier(my_t,nocarrier):
+def draw_nocarrier(my_t, my_d, nocarrier):
     c1 = ROOT.TCanvas("c1","canvas2",200,10,1000,1000)
-    h = ROOT.TH2D("h","pairs of carrier generation",len(my_t.p_tracks[0]),0,1300,len(my_t.p_tracks),0,50)
+    h = ROOT.TH2D("h","pairs of carrier generation", len(my_t.p_tracks[0]), 0, my_d.l_x, len(my_t.p_tracks), 0, my_d.l_y)
     for i_r in range(len(my_t.p_tracks)):
         for i_z in range(len(my_t.p_tracks[i_r])):
-            if nocarrier[i_z,i_r]>1:
-                n = nocarrier[i_z,i_r]
-                h.Fill(i_z*10, i_r*1, n)
-            else:
-                continue
+            n = nocarrier[i_z, i_r]
+            h.Fill(i_z*(my_d.l_x/len(my_t.p_tracks[0])), i_r*(my_d.l_y/len(my_t.p_tracks)), n)
     h.Draw()
     c1.SaveAs("nocarrier.pdf")
 
 class SPAGeneration():
     def __init__(self):
-        self.tau = 350e-12   #ps
-        self.alfa = 987      #SI
-        self.power = 1e-11   #J/s
-        self.wavelength = 1.064e-6  #m
-        self.widthBeamWaist = 5e-6  #m
-        self.refractionIndex = 3.51
-
-    def getWidthSquared(self,z):
-        return (self.widthBeamWaist**2)*(1+((self.wavelength*z)/(np.pi* (self.widthBeamWaist**2)*self.refractionIndex))**2)
-    def getWidth(self,z):
-        return np.sqrt(self.getWidthSquared(z))
-    def getIntensity(self,r,z,z_o = 0 ):
-        widthSquared= self.getWidthSquared(z-z_o)
-        intensity = ((2*self.power)/(np.pi*widthSquared))*np.exp((-2*(r**2)/(widthSquared)))*np.exp(-self.alfa*z)
-        return intensity
-    def getCarrierDensity(self,r,z,z_o = 0 ):
-        I = self.getIntensity(r,z,z_o)
-        return (self.alfa*I)/(3.6*1.60217657e-19)
-
-class ProjGrid():
-    def __init__(self,r_min,r_max,r_nBins,z_max,z_min,z_nBins,z_o):
-        self.r_min = r_min
-        self.r_max = r_max
-        self.r_nBins = r_nBins
-        self.z_min = z_min
-        self.z_max = z_max
-        self.z_nBins = z_nBins
-        self.z_o = z_o
-        self.rArray = np.linspace(r_min*1e-6,r_max*1e-6,r_nBins)
-        self.zArray = np.linspace(z_min*1e-6,z_max*1e-6,z_nBins)
-        self.r_step = abs(r_max*1e-6-r_min*1e-6)/r_nBins
-        self.z_step = abs(z_max*1e-6-z_min*1e-6)/z_nBins
-        self.xArray = self.rArray
-        self.yArray = self.rArray
-        self.x_step = self.r_step
-        self.y_step = self.r_step
-
-def TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier):
-
-    ROOT.gStyle.SetOptStat(0)
-    c = ROOT.TCanvas("c", "canvas", 200,10,1000, 1000)
-    c.SetLeftMargin(0.12)
-    c.SetRightMargin(0.12)
-    # c.SetTopMargin(0.12)
-    c.SetBottomMargin(0.14)
-    my_detector.sum_cu.GetXaxis().SetTitleOffset(1.2)
-    my_detector.sum_cu.GetXaxis().SetTitleSize(0.05)
-    my_detector.sum_cu.GetXaxis().SetLabelSize(0.04)
-    my_detector.sum_cu.GetXaxis().SetNdivisions(510)
-    my_detector.sum_cu.GetYaxis().SetTitleOffset(1.1)
-    my_detector.sum_cu.GetYaxis().SetTitleSize(0.05)
-    my_detector.sum_cu.GetYaxis().SetLabelSize(0.04)
-    my_detector.sum_cu.GetYaxis().SetNdivisions(505)
-    my_detector.sum_cu.GetXaxis().CenterTitle()
-    my_detector.sum_cu.GetYaxis().CenterTitle()
-    my_detector.sum_cu.GetXaxis().SetTitle("Time [s]")
-    my_detector.sum_cu.GetYaxis().SetTitle("Current [A]")
-    my_detector.sum_cu.Draw("HIST")
-    my_detector.positive_cu.Draw("SAME HIST")
-    my_detector.negtive_cu.Draw("SAME HIST")
-    c.Update()
-    rightmax = 1.1*ele_current.GetMinimum()
-    n_scale = ROOT.gPad.GetUymin() / rightmax
-    ele_current.Scale(n_scale)
-    ele_current.Draw("SAME HIST")
-    my_detector.sum_cu.SetLineColor(3)
-    my_detector.positive_cu.SetLineColor(2)
-    my_detector.negtive_cu.SetLineColor(4)
-    ele_current.SetLineColor(6)
-    my_detector.sum_cu.SetLineWidth(2)
-    my_detector.positive_cu.SetLineWidth(2)
-    my_detector.negtive_cu.SetLineWidth(2)
-    ele_current.SetLineWidth(2)    
-    axis = ROOT.TGaxis(ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymin(), ROOT.gPad.GetUxmax(), ROOT.gPad.GetUymax(), rightmax, 0, 510, "+L")
-    axis.SetLineColor(6)
-    axis.SetTextColor(6)
-    axis.SetTextSize(0.02)
-    axis.SetLabelColor(6)
-    axis.SetLabelSize(0.02)
-    axis.SetTitle("Ampl [mV]")
-    axis.CenterTitle()
-    axis.Draw("same")
-
-    legend = ROOT.TLegend(0.5, 0.3, 0.8, 0.6)
-    legend.AddEntry(my_detector.negtive_cu, "electron", "l")
-    legend.AddEntry(my_detector.positive_cu, "hole", "l")
-    legend.AddEntry(my_detector.sum_cu, "e+h", "l")
-    legend.AddEntry(ele_current, "electronics", "l")
-    legend.SetBorderSize(0)
-    legend.SetTextFont(43)
-    legend.SetTextSize(40)
-    legend.Draw("same")
-
-    c.Update()
-    c.SaveAs("basic_infor.pdf")
-    
-    charge_t=my_detector.sum_cu.Integral() \
-        * ((my_detector.sum_cu.GetXaxis().GetXmax() \
-        - my_detector.sum_cu.GetXaxis().GetXmin()) \
-        / my_detector.sum_cu.GetNbinsX()) * 1e15
-    print(charge_t)
-    print(qtot*1e15)
-    my_drift.draw_drift_path()
-
-def draw_nocarrier(my_t,nocarrier):
-    c1 = ROOT.TCanvas("c1","canvas2",200,10,1000,1000)
-    h = ROOT.TH2D("h","pairs of carrier generation",len(my_t.p_tracks[0]),0,1300,len(my_t.p_tracks),0,50)
-    for i_r in range(len(my_t.p_tracks)):
-        for i_z in range(len(my_t.p_tracks[i_r])):
-            if nocarrier[i_z,i_r]>1:
-                n = nocarrier[i_z,i_r]
-                h.Fill(i_z*10, i_r*1, n)
-            else:
-                continue
-    h.Draw()
-    c1.SaveAs("nocarrier.pdf")
-
-class SPAGeneration():
-    def __init__(self):
+        ### for Si 1064 IR
         self.tau = 350e-12   #ps
         self.alfa = 987      #SI
         self.power = 1e-11   #J/s
@@ -1114,7 +979,7 @@ class Matplt:
         plt.title('Electric field')
         plt.xlabel('depth [um]')
         plt.ylabel('Electric field [V/um]')
-        plt.plot(my_f.y_f_position[1],my_f.ey_electric[1])
+        plt.plot(my_f.y_f_position[26],my_f.ey_electric[26])
 
         plt.subplot(2,2,2)
         plt.title('Electric field')
@@ -1136,43 +1001,51 @@ class Matplt:
         plt.savefig("test_electric.pdf")
         # plt.show()
 
-def Nocarrier(r, rlen, zlen):
-    z_o = 0 # z focus position in um
-    r_min = -r # um
-    r_max = -r+ rlen # um
-    r_nBins = 50
-    z_min = 0. # um
-    z_max = zlen # um
-    z_nBins = 130
+class NNocarrier():
+    def __init__(self, r, rlen, zlen, rbin, zbin):
+        self.z_o = 0   # z focus position in um
+        self.rlen = rlen
+        self.zlen = zlen
+        self.r_min = -r # um
+        self.r_max = -r+ rlen # um
+        self.r_nBins = rbin
+        self.z_min = 0. # um
+        self.z_max = zlen # um
+        self.z_nBins = zbin
 
-    my_pro = ProjGrid(r_min, r_max, r_nBins, z_max, z_min, z_nBins, z_o)
-    rGrid, zGrid = np.meshgrid(my_pro.rArray,my_pro.zArray)
-    carriergeneration = SPAGeneration()
-    CGrid = carriergeneration.getCarrierDensity(rGrid, zGrid, z_o*1e-6)
-    xGrid = rGrid.copy()
-    projGrid = CGrid.copy()
-    
-    for i_z in range(z_nBins):
-        for i_r in range(r_nBins):
-            x_value = xGrid[i_z, i_r]
-            r_valueArray = np.sqrt(x_value*x_value+ my_pro.yArray*my_pro.yArray)
-            # Get z value
-            z_value = zGrid[i_z, i_r]
-            z_valueArray = np.ones_like(r_valueArray)*z_value
-            carr_den_projArray = carriergeneration.getCarrierDensity(r_valueArray, z_valueArray, z_o*1e-6)
-            # Project sum and take into account integral step
-            projGrid[i_z, i_r] = (carr_den_projArray.sum()*my_pro.y_step)/2
-    projGrid = projGrid*my_pro.x_step*my_pro.z_step
-    return(projGrid)
+    def Nocarrier(self):
+        my_pro = ProjGrid(self.r_min, self.r_max, self.r_nBins, self.z_max, self.z_min, self.z_nBins, self.z_o)
+        rGrid, zGrid = np.meshgrid(my_pro.rArray,my_pro.zArray)
+        carriergeneration = SPAGeneration()
+        CGrid = carriergeneration.getCarrierDensity(rGrid, zGrid, self.z_o*1e-6)
+        xGrid = rGrid.copy()
+        projGrid = CGrid.copy()
+
+        for i_z in range(self.z_nBins):
+            for i_r in range(self.r_nBins):
+                x_value = xGrid[i_z, i_r]
+                r_valueArray = np.sqrt(x_value*x_value+ my_pro.yArray*my_pro.yArray)
+                # Get z value
+                z_value = zGrid[i_z, i_r]
+                z_valueArray = np.ones_like(r_valueArray)*z_value
+                carr_den_projArray = carriergeneration.getCarrierDensity(r_valueArray, z_valueArray, self.z_o*1e-6)
+                # Project sum and take into account integral step
+                projGrid[i_z, i_r] = (carr_den_projArray.sum()*my_pro.y_step)/2
+        projGrid = projGrid*my_pro.x_step*my_pro.z_step
+        return(projGrid)
+
 
 ### get the 2D TCT simulation basics information
 def twoD_TCT(model="PIN"):
     ### define the structure of the detector
     rlen = 50
     zlen = 1300
+    rbin = 50
+    zbin = 130
     my_detector = R2dDetector(zlen, rlen)
-    my_detector.mesh_step(10,10)
-    my_detector.set_para(doping=-10,voltage=-200,temperature=300)
+    my_detector.mesh_step(1,1)
+    # my_detector.mesh_step(10,1)
+    my_detector.set_para(doping=1.79, voltage=-200, temperature=300)      #doping:e12
     ### get the electric field and weighting potential
     if model == "PIN":
         my_field = Fenics_cal(my_detector)
@@ -1182,22 +1055,26 @@ def twoD_TCT(model="PIN"):
 
     else:
         raise NameError(model)
-    
-    cvmin = ROOT.TCanvas("cvmin", "canvas1", 200, 10, 1000, 1000)
+
+    my_field.fenics_p_electric(my_detector) 
+    my_field.fenics_p_w_electric(my_detector)
+    my_field.change_data_form(my_detector)
+    my_field.cal_field(my_detector)
+
+    num = 70
+    cvmin = ROOT.TCanvas("cvmin", "vmin", 100, 100, 800, 600)
     mg = ROOT.TMultiGraph("mg","")
     x_array=array('f')
     y_array=array('f')
-
-    x = [[]for n in range(rlen)]
-    for i in range(rlen):
-        nocarrier = Nocarrier(i, rlen, zlen)    #Input the position of the laser
-        my_field.fenics_p_electric(my_detector) 
-        my_field.fenics_p_w_electric(my_detector)
-        my_field.change_data_form(my_detector)
-        my_field.cal_field(my_detector)
+    x = [[]for n in range(num+1)]
+    y = [ ]
+    for i in range(num+1):
+        r = -10+ i*(70/num)
+        carriergen = NNocarrier(r, rlen, zlen, rbin, zbin)    #Input the position of the laser
+        nocarrier = carriergen.Nocarrier()
         ### define the tracks and type of incident particles
         my_track = TCTTracks()
-        my_track.t_mip(130,50,nocarrier)
+        my_track.t_mip(zbin, rbin, zlen, rlen, nocarrier)
         ### drift of ionized particles
         my_drift = TCTDrifts(my_track)
         my_drift.tct_ionized_drift(my_track,my_field,my_detector,nocarrier)
@@ -1208,27 +1085,56 @@ def twoD_TCT(model="PIN"):
         my_plot = Matplt()
         my_plot.plot_basic_info(my_field,my_drift)
         ### root plot
-        draw_nocarrier(my_track,nocarrier)
+        draw_nocarrier(my_track, my_detector, nocarrier)
         cumin = TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier)
         vmin = [i * 50 for i in cumin]
-        print(vmin)
-        x[i].append(i)
+        y.append(vmin)
+        x[i].append(r)
         x_array.extend(x[i])
         y_array.extend(vmin)
-        print(x_array)
-        print(y_array)
         n = 1
         gr = ROOT.TGraph(n,x_array,y_array)
-        gr.SetMarkerColor(4)
-        gr.SetLineColor(4)
-        gr.SetLineStyle(1)
-        gr.SetMarkerStyle(1)
-        gr.SetMarkerSize(30)
+        gr.SetMarkerColor(47)
+        gr.SetMarkerStyle(42)
+        gr.SetMarkerSize(3)
         mg.Add(gr)
         del x_array[:]
         del y_array[:]
     mg.Draw("APL")
-    cvmin.SaveAs("vmin.pdf")
+    cvmin.SaveAs("vmin200V.pdf")
+
+    outputfile = ROOT.TFile("dataout200V.root","RECREATE")
+    tree = ROOT.TTree("tree","tree")
+    v = array('f', [0.])
+    z = array('f', [0.])
+    tree.Branch("v", v, "v/F")
+    tree.Branch("z", z, "z/F")
+    for i in range(num+1):
+        v[0] = y[i][0]
+        z[0] = x[i][0]
+        tree.Fill()
+    tree.Write()
+    outputfile.Close()
+
+    # #Input the position of the laser
+    # # define the tracks and type of incident particles
+    # carriergen = NNocarrier(25, rlen, zlen, rbin, zbin)    #Input the position of the laser
+    # nocarrier = carriergen.Nocarrier() 
+    # my_track = TCTTracks()
+    # my_track.t_mip(zbin, rbin, zlen, rlen, nocarrier)
+    # ## drift of ionized particles
+    # my_drift = TCTDrifts(my_track)
+    # my_drift.tct_ionized_drift(my_track,my_field,my_detector,nocarrier)
+    # ## after the electronics
+    # my_electronics = Amplifier()
+    # qtot,ele_current=my_electronics.CSA_amp(my_detector,t_rise=0.4,t_fall=0.2,trans_imp=10)
+    # ## matlab plot and show
+    # my_plot = Matplt()
+    # my_plot.plot_basic_info(my_field,my_drift)
+    # ## root plot
+    # draw_nocarrier(my_track, my_detector, nocarrier)
+    # cumin = TCTdraw_plot(my_detector,ele_current,qtot,my_drift,my_track,nocarrier) 
+    # print(cumin)
 
 ### get the 2D simulation basics information
 def twoD_time(model="PIN"):
@@ -1296,19 +1202,7 @@ def twoD_time_scan(output,number):
 
 def main():
     args = sys.argv[1:]
-
-    if args[1] == '3D': 
-        module_name = '3d'
-    else: 
-        raise NameError(args[0])
-    
-    module = __import__(module_name)
-    module.main(args[2:])
-
-    sys.exit() 
-
     model = args[0]
-    module = __import__(module_name)
 
     if model in ["2D","2D_SiC_PIN"]:
         twoD_time()
